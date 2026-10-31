@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../layouts/DashboardLayout';
 import {
   Trophy, Download, RotateCcw, TrendingUp, CheckCircle2, AlertCircle,
-  Target, Zap, Brain, BarChart3, ChevronUp, ChevronDown, Minus,
-  Award, Clock, ArrowLeft, Star, Lightbulb,
+  Zap, Brain, BarChart3, ChevronUp, ChevronDown, Minus,
+  Clock, ArrowLeft, Star, Lightbulb,
 } from 'lucide-react';
 
 // ===== HARDCODED DUMMY DATA =====
@@ -72,88 +72,6 @@ const scoreLabel = (s) => {
 
 // ===== SUB-COMPONENTS =====
 
-// ScoreDial - large circular score indicator with animation
-const ScoreDial = ({ score, size = 160 }) => {
-  // animated starts false, becomes true after a short delay to trigger the CSS transition
-  const [animated, setAnimated] = useState(false);
-
-  useEffect(() => {
-    const t = setTimeout(() => setAnimated(true), 150);
-    return () => clearTimeout(t);
-  }, []);
-
-  const r = (size - 20) / 2; // radius
-  const circ = 2 * Math.PI * r; // circumference of the circle
-  // When animated is false, offset = full circumference (empty circle)
-  // When animated is true, offset shows the score percentage
-  const offset = animated ? circ - (score / 100) * circ : circ;
-  const strokeColor = score >= 80 ? '#059669' : score >= 60 ? '#f59e0b' : '#ef4444';
-  const c = scoreColor(score);
-
-  return (
-    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-        {/* Background circle (gray) */}
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="#f1f5f9" strokeWidth="12" fill="none" />
-        {/* Score arc (colored) */}
-        <circle
-          cx={size / 2} cy={size / 2} r={r}
-          stroke={strokeColor} strokeWidth="12" fill="none"
-          strokeDasharray={circ} strokeDashoffset={offset}
-          strokeLinecap="round"
-          style={{ transition: 'stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1)' }}
-        />
-      </svg>
-      {/* Score number in center */}
-      <div className="absolute text-center">
-        <p className={`font-display font-bold leading-none ${c.text}`} style={{ fontSize: size * 0.2 }}>{score}</p>
-        <p className="text-slate-400 text-xs font-medium mt-0.5">/100</p>
-      </div>
-    </div>
-  );
-};
-
-// QuestionBarChart - vertical bar chart showing score per question
-const QuestionBarChart = ({ questions }) => {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 100);
-    return () => clearTimeout(t);
-  }, []);
-
-  const maxH = 130; // max bar height in pixels
-  return (
-    <div className="flex items-end gap-1.5 w-full" style={{ height: 180 }}>
-      {questions.map((q, i) => {
-        // Calculate bar height based on score
-        const targetH = q.skipped ? 6 : Math.max(8, (q.score / 100) * maxH);
-        const h = mounted ? targetH : 4; // starts small, grows on mount
-        const c = q.skipped ? { bg: 'bg-slate-200', text: 'text-slate-400' } : scoreColor(q.score);
-        return (
-          <div key={q.id} className="flex-1 flex flex-col items-center gap-1 group relative">
-            {/* Hover tooltip */}
-            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs rounded-xl px-3 py-2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-20 shadow-2xl text-center">
-              <p className="font-semibold">Q{i + 1}: {q.skipped ? 'Skipped' : `${q.score}/100`}</p>
-              <p className="text-slate-300 text-[10px] mt-0.5">{q.category}</p>
-              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
-            </div>
-            {/* The bar itself */}
-            <div className="w-full flex items-end justify-center" style={{ height: maxH }}>
-              <div
-                className={`w-full rounded-t-lg ${c.bg} cursor-pointer hover:opacity-80`}
-                style={{ height: h, opacity: q.skipped ? 0.3 : 1, transition: `height 0.8s cubic-bezier(.4,0,.2,1) ${i * 60}ms` }}
-              />
-            </div>
-            <span className={`text-[10px] font-bold ${c.text}`}>{q.skipped ? '—' : q.score}</span>
-            <span className="text-[10px] text-slate-400 font-medium">Q{i + 1}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
 // SkillBar - horizontal progress bar for a single skill
 const SkillBar = ({ skill, index }) => {
   const [width, setWidth] = useState(0);
@@ -179,133 +97,6 @@ const SkillBar = ({ skill, index }) => {
           className={`h-full ${c.bg} rounded-full`}
           style={{ width: `${width}%`, transition: 'width 1s cubic-bezier(.4,0,.2,1)' }}
         />
-      </div>
-    </div>
-  );
-};
-
-// RadarChart - SVG spider/radar chart showing skills
-const RadarChart = ({ skills }) => {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 200);
-    return () => clearTimeout(t);
-  }, []);
-
-  const cx = 130, cy = 130, r = 95; // center x, center y, radius
-  const n = skills.length; // number of axes
-  // Calculate angle for each axis (starting from top, -90 degrees)
-  const angles = skills.map((_, i) => ((2 * Math.PI * i) / n) - Math.PI / 2);
-
-  // Convert polar coordinates (angle, value) to x,y point
-  const pt = (angle, val) => ({
-    x: cx + (val / 100) * r * Math.cos(angle),
-    y: cy + (val / 100) * r * Math.sin(angle),
-  });
-
-  const displayScores = mounted ? skills.map(s => s.score) : skills.map(() => 0);
-  const dataPoints = displayScores.map((score, i) => pt(angles[i], score));
-  const polygon = dataPoints.map(p => `${p.x},${p.y}`).join(' ');
-  const gridLevels = [0.25, 0.5, 0.75, 1]; // 25%, 50%, 75%, 100% rings
-
-  return (
-    <svg viewBox="0 0 260 260" className="w-full max-w-[260px] mx-auto">
-      {/* Grid rings */}
-      {gridLevels.map((lvl, li) => {
-        const pts = angles.map(a => pt(a, lvl * 100));
-        return (
-          <polygon key={li} fill="none" stroke="#e2e8f0" strokeWidth={li === 3 ? 1.5 : 1}
-            points={pts.map(p => `${p.x},${p.y}`).join(' ')} />
-        );
-      })}
-      {/* Percentage labels on rings */}
-      {gridLevels.map((lvl, li) => {
-        const lp = pt(angles[0], lvl * 100);
-        return <text key={li} x={lp.x + 4} y={lp.y} fontSize="8" fill="#94a3b8" fontWeight="500">{lvl * 100}</text>;
-      })}
-      {/* Spokes (lines from center to each axis) */}
-      {angles.map((a, i) => {
-        const end = pt(a, 100);
-        return <line key={i} x1={cx} y1={cy} x2={end.x} y2={end.y} stroke="#e2e8f0" strokeWidth="1" />;
-      })}
-      {/* Data polygon (the colored shape) */}
-      <polygon points={polygon} fill="rgba(5,150,105,0.12)" stroke="#059669" strokeWidth="2.5"
-        style={{ transition: 'all 1s cubic-bezier(.4,0,.2,1)' }} />
-      {/* Dots at each data point */}
-      {dataPoints.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r="4.5" fill="#059669" stroke="white" strokeWidth="2"
-          style={{ transition: `all 1s cubic-bezier(.4,0,.2,1) ${i * 60}ms` }} />
-      ))}
-      {/* Skill name labels */}
-      {skills.map((s, i) => {
-        const lp = pt(angles[i], 122);
-        const anchor = lp.x < cx - 5 ? 'end' : lp.x > cx + 5 ? 'start' : 'middle';
-        return (
-          <text key={i} x={lp.x} y={lp.y} textAnchor={anchor} dy="0.35em"
-            fontSize="10.5" fontWeight="700" fill="#475569">{s.name}</text>
-        );
-      })}
-    </svg>
-  );
-};
-
-// ScoreDistribution - pie/donut chart showing how many questions fall in each score range
-const ScoreDistribution = ({ questions }) => {
-  const answered = questions.filter(q => !q.skipped);
-  const buckets = [
-    { label: 'Excellent', count: answered.filter(q => q.score >= 80).length, color: '#059669' },
-    { label: 'Good', count: answered.filter(q => q.score >= 70 && q.score < 80).length, color: '#3b82f6' },
-    { label: 'Fair', count: answered.filter(q => q.score >= 55 && q.score < 70).length, color: '#f59e0b' },
-    { label: 'Needs Work', count: answered.filter(q => q.score < 55).length, color: '#ef4444' },
-    { label: 'Skipped', count: questions.filter(q => q.skipped).length, color: '#cbd5e1' },
-  ];
-  const total = questions.length;
-  const r = 38, cx = 50, cy = 50;
-  let cumAngle = 0;
-
-  // Convert degrees to x,y coordinates on the circle
-  const polarToXY = (deg, radius) => ({
-    x: cx + radius * Math.cos((deg - 90) * (Math.PI / 180)),
-    y: cy + radius * Math.sin((deg - 90) * (Math.PI / 180)),
-  });
-
-  // Create pie slices from the buckets
-  const slices = buckets
-    .filter(b => b.count > 0)
-    .map(b => {
-      const angle = (b.count / total) * 360;
-      const slice = { ...b, startAngle: cumAngle, endAngle: cumAngle + angle };
-      cumAngle += angle;
-      return slice;
-    });
-
-  return (
-    <div className="flex items-center gap-5">
-      <svg width="100" height="100" viewBox="0 0 100 100" className="flex-shrink-0">
-        {slices.map((s, i) => {
-          const start = polarToXY(s.startAngle, r);
-          const end = polarToXY(s.endAngle, r);
-          const large = s.endAngle - s.startAngle > 180 ? 1 : 0;
-          const path = `M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${large} 1 ${end.x} ${end.y} Z`;
-          return <path key={i} d={path} fill={s.color} opacity="0.85" />;
-        })}
-        {/* White center hole (makes it a donut) */}
-        <circle cx={cx} cy={cy} r="20" fill="white" />
-        <text x={cx} y={cy - 3} textAnchor="middle" fontSize="12" fontWeight="700" fill="#0f172a">{answered.length}</text>
-        <text x={cx} y={cy + 8} textAnchor="middle" fontSize="7.5" fill="#94a3b8">answered</text>
-      </svg>
-      {/* Legend */}
-      <div className="space-y-1.5 flex-1">
-        {buckets.map(b => (
-          <div key={b.label} className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: b.color }} />
-              <span className="text-xs text-slate-600">{b.label}</span>
-            </div>
-            <span className="text-xs font-bold text-slate-800 tabular-nums">{b.count}</span>
-          </div>
-        ))}
       </div>
     </div>
   );
@@ -388,8 +179,6 @@ export const InterviewResults = () => {
   // Calculate summary statistics
   const answered = data.questions.filter(q => !q.skipped);
   const avgScore = answered.length ? Math.round(answered.reduce((a, q) => a + q.score, 0) / answered.length) : 0;
-  const best = [...answered].sort((a, b) => b.score - a.score)[0];
-  const worst = [...answered].sort((a, b) => a.score - b.score)[0];
 
   return (
     <DashboardLayout>
@@ -452,49 +241,6 @@ export const InterviewResults = () => {
           ))}
         </div>
 
-        {/* ── SCORE DIAL + RADAR CHART ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Overall dial + distribution donut */}
-          <div className="card p-6 flex flex-col items-center text-center animate-slide-up">
-            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-5">Overall Performance</p>
-            <ScoreDial score={data.overallScore} size={164} />
-            <p className={`mt-4 text-lg font-bold font-display ${scoreColor(data.overallScore).text}`}>
-              {scoreLabel(data.overallScore)}
-            </p>
-            <div className="mt-5 w-full border-t border-slate-100 pt-4">
-              <ScoreDistribution questions={data.questions} />
-            </div>
-          </div>
-          {/* Skill radar chart */}
-          <div className="card p-6 animate-slide-up" style={{ animationDelay: '80ms' }}>
-            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">AI Skill Radar</p>
-            <RadarChart skills={data.skills} />
-          </div>
-        </div>
-
-        {/* ── BAR CHART ── */}
-        <div className="card p-6 mb-8 animate-slide-up">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-            <p className="text-sm font-bold text-slate-800">Score Per Question</p>
-            <div className="flex items-center gap-3 text-[11px] text-slate-500 flex-wrap">
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />≥80</span>
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-amber-400 inline-block" />60–79</span>
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-400 inline-block" />&lt;60</span>
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-slate-200 inline-block" />Skipped</span>
-            </div>
-          </div>
-          <QuestionBarChart questions={data.questions} />
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mt-5 pt-4 border-t border-slate-100 text-sm">
-            <div className="flex items-center gap-2">
-              <Award size={15} className="text-emerald-600 flex-shrink-0" />
-              <span className="text-slate-600">Best: <strong className="text-emerald-700">Q{best.id} — {best.score}/100</strong> <span className="text-slate-400">({best.category})</span></span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Target size={15} className="text-red-500 flex-shrink-0" />
-              <span className="text-slate-600">Weakest: <strong className="text-red-600">Q{worst.id} — {worst.score}/100</strong> <span className="text-slate-400">({worst.category})</span></span>
-            </div>
-          </div>
-        </div>
 
         {/* ── SKILL BREAKDOWN BARS ── */}
         <div className="card p-6 mb-8">
